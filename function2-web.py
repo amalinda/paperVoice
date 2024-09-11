@@ -13,7 +13,7 @@ def text_to_speech(request):
         HTML form or downloadable MP3 file.
     """
     # Replace with your OpenAI API key
-    api_key = "YOURKEY"
+    api_key = ""
     url = "https://api.openai.com/v1/audio/speech"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -21,14 +21,21 @@ def text_to_speech(request):
     }
 
     if request.method == 'POST':
-        if 'file' not in request.files:
-            return "No file part in the request.", 400
-
-        file = request.files['file']
-        if file.filename == '' or not file.filename.endswith('.txt'):
-            return "No file selected or file is not a .txt file.", 400
-
-        text = file.read().decode('utf-8')
+        if 'process_text' in request.form:
+            # Handle text input
+            text = request.form.get('text', '').strip()
+            if not text:
+                return "No text provided.", 400
+            text_to_process = text
+            file = None
+        elif 'process_file' in request.form:
+            # Handle file upload
+            file = request.files.get('file')
+            if not file or not file.filename.endswith('.txt'):
+                return "No file selected or file is not a .txt file.", 400
+            text_to_process = file.read().decode('utf-8')
+        else:
+            return "Invalid request.", 400
 
         # Define the maximum character limit per API request
         max_length = 4096
@@ -36,8 +43,8 @@ def text_to_speech(request):
         audio_segments = []
 
         # Process text in chunks
-        while start_index < len(text):
-            chunk = text[start_index:start_index + max_length]
+        while start_index < len(text_to_process):
+            chunk = text_to_process[start_index:start_index + max_length]
 
             # Define the request payload with the required parameters
             data = {
@@ -85,13 +92,16 @@ def text_to_speech(request):
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Upload Text File</title>
+            <title>Upload Text File or Enter Text</title>
         </head>
         <body>
-            <h1>Upload a Text File to Convert to Speech</h1>
+            <h1>Upload a Text File or Enter Text to Convert to Speech</h1>
             <form action="/" method="post" enctype="multipart/form-data">
-                <input type="file" name="file" accept=".txt" required>
-                <button type="submit">Upload and Convert</button>
+                <textarea name="text" rows="4" cols="50" placeholder="Enter text here..."></textarea><br>
+                <button type="submit" name="process_text">Process Text</button>
+                <br><br>
+                <input type="file" name="file" accept=".txt"><br>
+                <button type="submit" name="process_file">Upload and Process File</button>
             </form>
         </body>
         </html>
